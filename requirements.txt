@@ -3,3 +3,5 @@ opencv-python
 pillow
 matplotlib
 ultralytics>=8.0.0
+Flask
+Flask-CORS
