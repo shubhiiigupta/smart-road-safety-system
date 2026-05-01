@@ -11,12 +11,17 @@ from ultralytics import YOLO
 app = Flask(__name__)
 CORS(app) # Allow React frontend to fetch data
 
+# Ensure we use absolute paths from the parent directory
+PROJECT_ROOT = r"c:\Users\gupta\smart_road_safety_system"
+YOLO_MODEL_PATH = os.path.join(PROJECT_ROOT, "yolov8n.pt")
+CNN_MODEL_PATH = os.path.join(PROJECT_ROOT, "outputs", "custom_helmet_cnn.keras")
+TEST_IMAGES_PATTERN = os.path.join(PROJECT_ROOT, "test", "test_images", "*.png")
+
 # Models
 print("Loading YOLOv8 Model...")
-yolo_model = YOLO("yolov8n.pt")
+yolo_model = YOLO(YOLO_MODEL_PATH)
 
 print("Loading Custom Helmet CNN...")
-CNN_MODEL_PATH = r"c:\Users\gupta\smart_road_safety_system\outputs\custom_helmet_cnn.keras"
 cnn_model = tf.keras.models.load_model(CNN_MODEL_PATH)
 
 # Global Metrics State
@@ -118,11 +123,9 @@ def process_frame(frame):
 
 def generate_frames():
     """Generator to simulate a live video feed by looping through test images"""
-    images_pattern = r"c:\Users\gupta\smart_road_safety_system\test\test_images\*.png"
-    image_files = glob.glob(images_pattern)
+    image_files = glob.glob(TEST_IMAGES_PATTERN)
     
     if not image_files:
-        # Fallback to creating a blank frame if no images found
         blank = np.zeros((480, 640, 3), dtype=np.uint8)
         cv2.putText(blank, "No Test Images Found", (150, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
         ret, buffer = cv2.imencode('.jpg', blank)
@@ -132,36 +135,26 @@ def generate_frames():
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
             time.sleep(1)
 
-    # Loop infinitely through the test images
     while True:
         for img_path in image_files:
             frame = cv2.imread(img_path)
             if frame is not None:
-                # Process the frame through ML models
                 annotated_frame = process_frame(frame)
-                
-                # Encode to JPEG
                 ret, buffer = cv2.imencode('.jpg', annotated_frame)
                 frame_bytes = buffer.tobytes()
-                
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                
-                # Sleep to simulate video framerate
-                time.sleep(2.0) # Slower to let the user see the detections
+                time.sleep(2.0)
 
 @app.route('/api/video_feed')
 def video_feed():
-    # Multipart MJPEG stream
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/api/stats')
 def stats():
-    # Return live metrics
-    # Update latest day with current violations to make graph dynamic
     metrics["weekly_data"][-1]["violations"] = metrics["helmet_violations"] + metrics["distracted_drivers"]
     return jsonify(metrics)
 
 if __name__ == '__main__':
-    print("Starting Flask Backend on http://localhost:5000")
+    print("Starting Standalone Flask Backend on http://localhost:5000")
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
