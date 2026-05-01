@@ -5,3 +5,5 @@ matplotlib
 ultralytics>=8.0.0
 Flask
 Flask-CORS
+scikit-learn
+seaborn

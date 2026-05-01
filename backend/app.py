@@ -122,12 +122,13 @@ def process_frame(frame):
     return frame
 
 def generate_frames():
-    """Generator to simulate a live video feed by looping through test images"""
-    image_files = glob.glob(TEST_IMAGES_PATTERN)
-    
-    if not image_files:
+    """Generator to stream a test image for presentation"""
+    IMAGE_PATH = os.path.join(PROJECT_ROOT, "test", "two_wheeler_phone.png")
+    frame_orig = cv2.imread(IMAGE_PATH)
+
+    if frame_orig is None:
         blank = np.zeros((480, 640, 3), dtype=np.uint8)
-        cv2.putText(blank, "No Test Images Found", (150, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+        cv2.putText(blank, "Error Loading Image", (150, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
         ret, buffer = cv2.imencode('.jpg', blank)
         frame_bytes = buffer.tobytes()
         while True:
@@ -136,15 +137,22 @@ def generate_frames():
             time.sleep(1)
 
     while True:
-        for img_path in image_files:
-            frame = cv2.imread(img_path)
-            if frame is not None:
-                annotated_frame = process_frame(frame)
-                ret, buffer = cv2.imencode('.jpg', annotated_frame)
-                frame_bytes = buffer.tobytes()
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                time.sleep(2.0)
+        frame = frame_orig.copy()
+        
+        # Optional: Resize video for faster processing
+        frame = cv2.resize(frame, (640, 480))
+        
+        annotated_frame = process_frame(frame)
+        ret, buffer = cv2.imencode('.jpg', annotated_frame)
+        frame_bytes = buffer.tobytes()
+        
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        
+        # Adjust frame rate stream
+        time.sleep(1.0)
+    
+
 
 @app.route('/api/video_feed')
 def video_feed():
