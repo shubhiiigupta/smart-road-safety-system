@@ -1,0 +1,19 @@
+# Datasets and raw files
+data/
+archive (7).zip
+*.zip
+
+# Model weights and outputs
+outputs/
+models/
+*.pt
+*.keras
+*.h5
+
+# Python cache
+__pycache__/
+*.pyc
+.env
+.venv
+env/
+venv/
